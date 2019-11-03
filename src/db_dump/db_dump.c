@@ -35,6 +35,7 @@ Contributors:
 #define _mosquitto_free(A) free((A))
 #include <uthash.h>
 
+const unsigned char magic[15] = {0x00, 0xB5, 0x00, 'm','o','s','q','u','i','t','t','o',' ','d','b'};
 
 struct client_chunk
 {
@@ -99,42 +100,28 @@ struct msg_store_chunk *msgs_by_id = NULL;
 static void
 free__db_sub(struct db_sub *sub)
 {
-	if (sub->client_id) {
-		free(sub->client_id);
-	}
-	if (sub->topic) {
-		free(sub->topic);
-	}
+	free(sub->client_id);
+	free(sub->topic);
 }
 
 static void
 free__db_client(struct db_client *client)
 {
-	if (client->client_id) {
-		free(client->client_id);
-	}
+	free(client->client_id);
 }
 
 static void
 free__db_client_msg(struct db_client_msg *msg)
 {
-	if (msg->client_id) {
-		free(msg->client_id);
-	}
+	free(msg->client_id);
 }
 
 static void
 free__db_msg(struct db_msg *msg)
 {
-	if (msg->source_id) {
-		free(msg->source_id);
-	}
-	if (msg->topic) {
-		free(msg->topic);
-	}
-	if (msg->payload) {
-		free(msg->payload);
-	}
+	free(msg->source_id);
+	free(msg->topic);
+	free(msg->payload);
 }
 
 static void
@@ -198,7 +185,7 @@ print_db_msg(struct db_msg *msg, int length)
 }
 
 
-static int persist__read_string(FILE *db_fptr, char **str)
+int persist__read_string(FILE *db_fptr, char **str)
 {
 	uint16_t i16temp;
 	uint16_t slen;

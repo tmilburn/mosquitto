@@ -1,16 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Test remapping of topic name for outgoing message
 
-import socket
-
-import inspect, os, sys
-# From http://stackoverflow.com/questions/279237/python-import-a-module-from-a-folder
-cmd_subfolder = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"..")))
-if cmd_subfolder not in sys.path:
-    sys.path.insert(0, cmd_subfolder)
-
-import mosq_test
+from mosq_test_helper import *
 
 def write_config(filename, port1, port2):
     with open(filename, 'w') as f:
@@ -87,17 +79,11 @@ def test(bridge, sock):
                 ))
                 return 1
         else:
-            bridge.settimeout(3)
-            try:
-                bridge.recv(1)
-                print("FAIL: Received data when nothing is expected")
-                print("Fail on cases local_topic=%r, remote_topic=%r" % (
-                    local_topic, remote_topic,
+            time.sleep(1)
+            mosq_test.do_ping(bridge,
+                "FAIL: Received data when nothing is expected\nFail on cases local_topic=%r, remote_topic=%r" % (
+                local_topic, remote_topic,
                 ))
-                return 1
-            except socket.timeout:
-                pass
-            bridge.settimeout(20)
     return 0
 
 try:
@@ -124,7 +110,7 @@ finally:
     broker.wait()
     (stdo, stde) = broker.communicate()
     if rc:
-        print(stde)
+        print(stde.decode('utf-8'))
     ssock.close()
 
 exit(rc)

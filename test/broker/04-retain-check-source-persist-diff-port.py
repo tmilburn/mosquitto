@@ -1,14 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Test for CVE-2018-12546, with the broker being stopped to write the persistence file, plus subscriber on different port.
 
-import inspect, os, sys
-# From http://stackoverflow.com/questions/279237/python-import-a-module-from-a-folder
-cmd_subfolder = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"..")))
-if cmd_subfolder not in sys.path:
-    sys.path.insert(0, cmd_subfolder)
-
-import mosq_test
+from mosq_test_helper import *
+import os.path
 import signal
 
 def write_config(filename, port1, port2, per_listener):
@@ -68,9 +63,6 @@ def do_test(per_listener, username):
     subscribe_packet = mosq_test.gen_subscribe(mid, "test/topic", 0)
     suback_packet = mosq_test.gen_suback(mid, 0)
 
-    pingreq_packet = mosq_test.gen_pingreq()
-    pingresp_packet = mosq_test.gen_pingresp()
-
     broker = mosq_test.start_broker(filename=os.path.basename(__file__), use_conf=True, port=port1)
 
     try:
@@ -88,13 +80,15 @@ def do_test(per_listener, username):
             write_acl_2(acl_file, username)
             broker.terminate()
             broker.wait()
+            if os.path.isfile(persistence_file) == False:
+                raise FileNotFoundError("Persistence file not written")
 
             broker = mosq_test.start_broker(filename=os.path.basename(__file__), use_conf=True, port=port1)
 
             sock = mosq_test.do_client_connect(connect2_packet, connack2_packet, port=port2)
             mosq_test.do_send_receive(sock, subscribe_packet, suback_packet, "suback 2")
             # If we receive the retained message here, it is a failure.
-            mosq_test.do_send_receive(sock, pingreq_packet, pingresp_packet, "pingresp")
+            mosq_test.do_ping(sock)
             rc = 0
 
         sock.close()
@@ -103,10 +97,13 @@ def do_test(per_listener, username):
         broker.wait()
         os.remove(conf_file)
         os.remove(acl_file)
-        os.remove(persistence_file)
+        try:
+            os.remove(persistence_file)
+        except FileNotFoundError:
+            pass
         (stdo, stde) = broker.communicate()
         if rc:
-            print(stde)
+            print(stde.decode('utf-8'))
             exit(rc)
 
 

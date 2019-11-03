@@ -11,39 +11,16 @@ project(mosquitto)
 cmake_minimum_required(VERSION 2.8)
 # Only for version 3 and up. cmake_policy(SET CMP0042 NEW)
 
-set (VERSION 1.5.8)
+set (VERSION 1.6.7)
 
 add_definitions (-DCMAKE -DVERSION=\"${VERSION}\")
 
 if (WIN32)
-	set (BINDIR .)
-	set (SBINDIR .)
-	set (SYSCONFDIR .)
-	set (LIBDIR .)
-	set (INCLUDEDIR include)
-	set (DATAROOTDIR share)
-	set (MANDIR man)
-	set (SHAREDEST .)
-	set (PKGCONFIGDIR "${LIBDIR}/pkgconfig")
 	add_definitions("-D_CRT_SECURE_NO_WARNINGS")
 	add_definitions("-D_CRT_NONSTDC_NO_DEPRECATE")
-else (WIN32)
-	set (BINDIR bin)
-	set (SBINDIR sbin)
-	if ("${CMAKE_INSTALL_PREFIX}" STREQUAL /usr)
-		set (SYSCONFDIR /etc/mosquitto)
-	else ("${CMAKE_INSTALL_PREFIX}" STREQUAL /usr)
-		set (SYSCONFDIR etc/mosquitto)
-	endif ("${CMAKE_INSTALL_PREFIX}" STREQUAL /usr)
-	
-	set (LIBDIR lib${LIB_SUFFIX})
-	set (CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${LIBDIR}")
-	set (INCLUDEDIR include)
-	set (DATAROOTDIR share)
-	set (MANDIR "${DATAROOTDIR}/man")
-	set (SHAREDIR "${DATAROOTDIR}/mosquitto")
-	set (PKGCONFIGDIR "${LIBDIR}/pkgconfig")
 endif (WIN32)
+
+include(GNUInstallDirs)
 
 option(WITH_TLS
 	"Include SSL/TLS support?" ON)
@@ -73,6 +50,9 @@ endif (WITH_SOCKS)
 
 option(WITH_SRV "Include SRV lookup support?" OFF)
 
+option(WITH_STATIC_LIBRARIES "Build static versions of the libmosquitto/pp libraries?" OFF)
+option(WITH_PIC "Build the static library with PIC (Position Independent Code) enabled archives?" OFF)
+
 option(WITH_THREADING "Include client library threading support?" ON)
 if (WITH_THREADING)
 	add_definitions("-DWITH_THREADING")
@@ -99,6 +79,15 @@ endif (WITH_THREADING)
 
 option(DOCUMENTATION "Build documentation?" ON)
 
+option(WITH_DLT "Include DLT support?" OFF)
+message(STATUS "WITH_DLT = ${WITH_DLT}")
+if (WITH_DLT)
+	#find_package(DLT REQUIRED)
+	find_package(PkgConfig)
+	pkg_check_modules(DLT "automotive-dlt >= 2.11")
+	add_definitions("-DWITH_DLT")
+endif (WITH_DLT)
+
 # ========================================
 # Include projects
 # ========================================
@@ -114,7 +103,7 @@ endif (DOCUMENTATION)
 # Install config file
 # ========================================
 
-install(FILES mosquitto.conf aclfile.example pskfile.example pwfile.example DESTINATION "${SYSCONFDIR}")
+install(FILES mosquitto.conf aclfile.example pskfile.example pwfile.example DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/mosquitto")
 
 
 # ========================================
@@ -122,11 +111,11 @@ install(FILES mosquitto.conf aclfile.example pskfile.example pwfile.example DEST
 # ========================================
 
 configure_file(libmosquitto.pc.in libmosquitto.pc @ONLY)
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/libmosquitto.pc" DESTINATION "${PKGCONFIGDIR}")
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/libmosquitto.pc" DESTINATION "${CMAKE_INSTALL_PREFIX}/share/pkgconfig")
 configure_file(libmosquittopp.pc.in libmosquittopp.pc @ONLY)
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/libmosquittopp.pc" DESTINATION "${PKGCONFIGDIR}")
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/libmosquittopp.pc" DESTINATION "${CMAKE_INSTALL_PREFIX}/share/pkgconfig")
 
 # ========================================
 # Testing
 # ========================================
-add_custom_target(Tests COMMAND make -C ${mosquitto_SOURCE_DIR}/test test)
+enable_testing()

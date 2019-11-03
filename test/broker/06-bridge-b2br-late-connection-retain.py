@@ -1,16 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Does a bridge queue up retained messages correctly if the remote broker starts up late?
 
-import socket
-
-import inspect, os, sys
-# From http://stackoverflow.com/questions/279237/python-import-a-module-from-a-folder
-cmd_subfolder = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"..")))
-if cmd_subfolder not in sys.path:
-    sys.path.insert(0, cmd_subfolder)
-
-import mosq_test
+from mosq_test_helper import *
 
 def write_config1(filename, persistence_file, port1, port2):
     with open(filename, 'w') as f:
@@ -48,9 +40,6 @@ mid = 1
 publish_packet = mosq_test.gen_publish("bridge/test", qos=1, mid=mid, payload="message", retain=True)
 puback_packet = mosq_test.gen_puback(mid)
 
-pingreq_packet = mosq_test.gen_pingreq()
-pingresp_packet = mosq_test.gen_pingresp()
-
 ssock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 ssock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 ssock.settimeout(40)
@@ -83,7 +72,7 @@ try:
             # Guard against multiple retained messages of the same type by
             # sending a pingreq to give us something to expect back. If we get
             # a publish, it's a fail.
-            mosq_test.do_send_receive(bridge, pingreq_packet, pingresp_packet, "pingresp")
+            mosq_test.do_ping(bridge)
             rc = 0
 
     bridge.close()
@@ -99,7 +88,7 @@ finally:
     (stdo, stde) = broker.communicate()
     os.remove(persistence_file)
     if rc:
-        print(stde)
+        print(stde.decode('utf-8'))
     ssock.close()
 
 exit(rc)
